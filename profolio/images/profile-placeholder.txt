@@ -1,0 +1,9 @@
+Place your profile image here as "profile.jpg"
+
+The image should be:
+- Square or portrait orientation
+- High quality (at least 800x800px)
+- Professional photo
+- Named exactly "profile.jpg"
+
+The hexagon shape will automatically crop and style your image.
