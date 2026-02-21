@@ -1,12 +1,10 @@
+import { NextResponse } from "next/server";
 import { EmailTemplate } from "@/components/email-template";
 import { config } from "@/data/config";
-import { Resend } from "resend";
 import { z } from "zod";
 
-// Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic';
-
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+export const runtime = 'nodejs';
 
 const Email = z.object({
   fullName: z.string().min(2, "Full name is invalid!"),
@@ -18,24 +16,29 @@ export async function POST(req: Request) {
   try {
     // Check if API key is configured
     if (!process.env.RESEND_API_KEY) {
-      return Response.json(
+      return NextResponse.json(
         { error: "Email service not configured. Please contact the site owner." },
         { status: 503 }
       );
     }
 
     const body = await req.json();
-    console.log(body);
     const {
       success: zodSuccess,
       data: zodData,
       error: zodError,
     } = Email.safeParse(body);
-    if (!zodSuccess)
-      return Response.json({ error: zodError?.message }, { status: 400 });
+    
+    if (!zodSuccess) {
+      return NextResponse.json({ error: zodError?.message }, { status: 400 });
+    }
+
+    // Dynamically import Resend only when needed
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { data: resendData, error: resendError } = await resend.emails.send({
-      from: "Porfolio <onboarding@resend.dev>",
+      from: "Portfolio <onboarding@resend.dev>",
       to: [config.email],
       subject: "Contact me from portfolio",
       react: EmailTemplate({
@@ -46,11 +49,12 @@ export async function POST(req: Request) {
     });
 
     if (resendError) {
-      return Response.json({ resendError }, { status: 500 });
+      return NextResponse.json({ error: resendError }, { status: 500 });
     }
 
-    return Response.json(resendData);
+    return NextResponse.json(resendData);
   } catch (error) {
-    return Response.json({ error }, { status: 500 });
+    console.error("Email error:", error);
+    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }
